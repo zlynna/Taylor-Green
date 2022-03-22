@@ -17,9 +17,8 @@ class DataSet:
         self.w[5:] = 1 / 36
         self.RT = 100
         self.xi = self.e * np.sqrt(3 * self.RT)
-        self.L = 1.
         self.nu = 0.01
-        self.tau = 1e-4
+        self.tau = self.nu / self.RT
         self.sess = tf.Session()
         self.x_l = self.x_range.min()
         self.x_u = self.x_range.max()
@@ -82,7 +81,7 @@ class DataSet:
         feq_pre = self.feq_gradient(rou, u, v, x, y, t)
         R_sum = 0
         for k in range(9):
-            fneq_x = tf.gradients(f_neq[:, k][:, None], x)[0]   # list: [Tensor]
+            fneq_x = tf.gradients(f_neq[:, k][:, None], x)[0]
             fneq_y = tf.gradients(f_neq[:, k][:, None], y)[0]
             fneq_t = tf.gradients(f_neq[:, k][:, None], t)[0]
             R = (fneq_t + self.xi[k, 0] * fneq_x + self.xi[k, 1] * fneq_y + feq_pre[:, k][:, None] + 1 / self.tau * (f_neq[:, k][:, None])) ** 2
@@ -94,12 +93,12 @@ class DataSet:
         feq_pre = self.feq_gradient(rou, u, v, x, y, t)
         Eq_sum = x * 0
         for k in range(9):
-            fneq_x = tf.gradients(f_neq[:, k][:, None], x)[0]  # list: [Tensor]
+            fneq_x = tf.gradients(f_neq[:, k][:, None], x)[0]
             fneq_y = tf.gradients(f_neq[:, k][:, None], y)[0]
             fneq_t = tf.gradients(f_neq[:, k][:, None], t)[0]
             Eq = tf.abs(fneq_t + self.xi[k, 0] * fneq_x + self.xi[k, 1] * fneq_y + feq_pre[:, k][:, None] + 1 / self.tau * (f_neq[:, k][:, None]))
             Eq_sum = tf.concat([Eq_sum, Eq], 1)
-        return Eq_sum
+        return Eq_sum[:, 1:]
 
     # boundary condition
     def inward_judge(self, x, y):
@@ -115,9 +114,9 @@ class DataSet:
         feq_pre = self.feq_gradient(rou, u, v, x, y, t)
         R_sum = 0
         for k in range(9):
-            fneq_x = tf.gradients(f_neq[:, k][:, None], x)[0]
-            fneq_y = tf.gradients(f_neq[:, k][:, None], y)[0]
-            fneq_t = tf.gradients(f_neq[:, k][:, None], t)[0]
+            fneq_x = tf.gradients(f_neq, x)[0]
+            fneq_y = tf.gradients(f_neq, y)[0]
+            fneq_t = tf.gradients(f_neq, t)[0]
             R = (fneq_t + self.xi[k, 0] * fneq_x + self.xi[k, 1] * fneq_y + feq_pre[:, k][:, None] + 1 / self.tau * (f_neq[:, k][:, None])) ** 2
             R_sum = R_sum + R
         return R_sum
@@ -138,7 +137,7 @@ class DataSet:
         return v
 
     def p_func(self, x, y, t):
-        p = -0.25 * (np.cos(2 * x) + np.cos(2 * y)) * np.exp(-4 * t * self.nu)
+        p = -0.25 * (np.cos(2 * x) + np.cos(2 * y)) * np.exp(-4 * t * self.nu) + self.RT
         return p
 
     def rou_func(self, x, y, t):
